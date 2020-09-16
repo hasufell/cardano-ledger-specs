@@ -109,8 +109,8 @@ obligation ::
   Map (KeyHash 'StakePool era) (PoolParams era) ->
   Coin
 obligation pp rewards stakePools =
-  Val.scale (length rewards) (_keyDeposit pp)
-    <> Val.scale (length stakePools) (_poolDeposit pp)
+  Val.scale (fromIntegral (length rewards)) (_keyDeposit pp)
+    <> Val.scale (fromIntegral (length stakePools)) (_poolDeposit pp)
 
 -- | Calculate maximal pool reward
 maxPool :: PParams era -> Coin -> Rational -> Rational -> Coin

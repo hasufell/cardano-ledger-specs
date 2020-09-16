@@ -680,7 +680,7 @@ keyRefunds ::
   PParams era ->
   TxBody era ->
   Coin
-keyRefunds pp tx = Val.scale (length deregistrations) (_keyDeposit pp)
+keyRefunds pp tx = Val.scale (fromIntegral (length deregistrations)) (_keyDeposit pp)
   where
     deregistrations = filter isDeRegKey (toList $ _certs tx)
 

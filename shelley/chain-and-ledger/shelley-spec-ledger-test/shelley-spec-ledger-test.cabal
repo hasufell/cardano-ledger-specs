@@ -77,6 +77,8 @@ library
     cryptonite,
     directory,
     generic-random,
+    hashable,
+    hedgehog,
     hedgehog-quickcheck,
     hedgehog,
     iproute,
@@ -101,7 +103,6 @@ test-suite shelley-spec-ledger-test
     other-modules:
       Test.Control.Iterate.SetAlgebra
       Test.Shelley.Spec.Ledger.Address.Bootstrap
-      Test.Shelley.Spec.Ledger.ByronTranslation
       Test.Shelley.Spec.Ledger.Examples
       Test.Shelley.Spec.Ledger.Examples.Cast
       Test.Shelley.Spec.Ledger.Examples.Combinators
@@ -115,6 +116,11 @@ test-suite shelley-spec-ledger-test
       Test.Shelley.Spec.Ledger.Examples.Updates
       Test.Shelley.Spec.Ledger.Fees
       Test.Shelley.Spec.Ledger.MultiSigExamples
+      Test.Shelley.Spec.Ledger.NonTraceProperties.Generator
+      Test.Shelley.Spec.Ledger.NonTraceProperties.Mutator
+      Test.Shelley.Spec.Ledger.NonTraceProperties.PropertyTests
+      Test.Shelley.Spec.Ledger.NonTraceProperties.Serialization
+      Test.Shelley.Spec.Ledger.NonTraceProperties.Validity
       Test.Shelley.Spec.Ledger.PropertyTests
       Test.Shelley.Spec.Ledger.Rewards
       Test.Shelley.Spec.Ledger.Rules.ClassifyTraces
@@ -131,7 +137,6 @@ test-suite shelley-spec-ledger-test
       Test.Shelley.Spec.Ledger.Serialisation.Golden.Address
       Test.Shelley.Spec.Ledger.Serialisation.Golden.Encoding
       Test.Shelley.Spec.Ledger.Serialisation.Golden.Genesis
-      Test.Shelley.Spec.Ledger.Serialisation.StakeRef
       Test.Shelley.Spec.Ledger.Serialisation.Tripping.CBOR
       Test.Shelley.Spec.Ledger.Serialisation.Tripping.JSON
       Test.Shelley.Spec.Ledger.STSTests
@@ -179,6 +184,8 @@ test-suite shelley-spec-ledger-test
       cryptonite,
       directory,
       generic-random,
+      hashable,
+      hedgehog,
       hedgehog-quickcheck,
       hedgehog,
       HUnit,

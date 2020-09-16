@@ -177,7 +177,7 @@ genDCerts
     pure
       ( StrictSeq.fromList certs,
         totalDeposits pparams (_pParams (_pstate dpState)) certs,
-        Val.scale (length deRegStakeCreds) (_keyDeposit pparams),
+        Val.scale (fromIntegral (length deRegStakeCreds)) (_keyDeposit pparams),
         lastState_,
         ( concat (keyCredAsWitness <$> keyCreds'),
           scriptCredMultisig <$> scriptCreds

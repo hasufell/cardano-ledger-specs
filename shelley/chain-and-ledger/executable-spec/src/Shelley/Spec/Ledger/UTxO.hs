@@ -238,7 +238,7 @@ totalDeposits ::
   [DCert era] ->
   Coin
 totalDeposits pp stpools cs =
-  Val.scale numKeys (_keyDeposit pp) <> Val.scale numNewPools (_poolDeposit pp)
+  Val.scale (fromIntegral numKeys) (_keyDeposit pp) <> Val.scale (fromIntegral numNewPools) (_poolDeposit pp)
   where
     numKeys = length $ filter isRegKey cs
     pools = Set.fromList . Maybe.catMaybes $ fmap getKeyHashFromRegPool cs

@@ -1,9 +1,11 @@
 {-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -Wno-unused-binds #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 module Main where
 
+import Shelley.Spec.Ledger.STS.Chain(ChainState(..))
 import BenchUTxOAggregate (expr, genTestCase)
 import BenchValidation
   ( applyBlock,
@@ -14,14 +16,8 @@ import BenchValidation
     updateAndTickChain,
     updateChain,
     validateInput,
+    BenchCrypto,
   )
--- How to precompute env for the UTxO transactions
-
--- How to precompute env for the Stake Delegation transactions
--- How to precompute env for the StakeKey transactions
--- How to compute an initial state with N StakePools
-
-import Cardano.Ledger.Era (Crypto (..))
 import Control.DeepSeq (NFData)
 import Control.Iterate.SetAlgebra (dom, forwards, keysEqual, (▷), (◁))
 import Control.Iterate.SetAlgebraInternal (compile, compute, run)
@@ -39,13 +35,21 @@ import Criterion.Main
 import Data.Map (Map)
 import qualified Data.Map.Strict as Map
 import Data.Word (Word64)
+-- How to precompute env for the UTxO transactions
+
+-- How to precompute env for the Stake Delegation transactions
+-- How to precompute env for the StakeKey transactions
+-- How to compute an initial state with N StakePools
+
 import Shelley.Spec.Ledger.Bench.Gen
   ( genBlock,
     genChainState,
-    genTx,
+    genTriple,
   )
 import Shelley.Spec.Ledger.Coin (Coin (..))
+import Shelley.Spec.Ledger.Value (CV)
 import Shelley.Spec.Ledger.Credential (Credential (..))
+import Shelley.Spec.Ledger.Crypto (Crypto (..))
 import Shelley.Spec.Ledger.EpochBoundary (SnapShot (..))
 import qualified Shelley.Spec.Ledger.EpochBoundary as EB
 import Shelley.Spec.Ledger.Keys (KeyRole (..))
@@ -55,6 +59,9 @@ import Shelley.Spec.Ledger.LedgerState
     PState (..),
     UTxOState (..),
     stakeDistr,
+    NewEpochState(..),
+    EpochState(..),
+    LedgerState(..),
   )
 import Shelley.Spec.Ledger.UTxO (UTxO)
 import System.IO.Unsafe (unsafePerformIO)
@@ -73,10 +80,18 @@ import Test.Shelley.Spec.Ledger.BenchmarkFunctions
     ledgerStateWithNkeysMpools,
     ledgerStateWithNregisteredKeys,
     ledgerStateWithNregisteredPools,
+    ledgerEnv,
   )
 import Test.Shelley.Spec.Ledger.ConcreteCryptoTypes (C)
+import Test.Shelley.Spec.Ledger.Generator.Presets (genEnv)
+import Test.Shelley.Spec.Ledger.Generator.Core (GenEnv)
+import Data.Proxy (Proxy (..))
+import Test.Shelley.Spec.Ledger.Generator.Utxo(genTx)
 
 -- ==========================================================
+
+--TODO set this in one place (where?)
+type FixedValType = Coin
 
 eqf :: String -> (Map.Map Int Int -> Map.Map Int Int -> Bool) -> Int -> Benchmark
 eqf name f n = bgroup (name ++ " " ++ show n) (map runat [n, n * 10, n * 100, n * 1000])
@@ -113,10 +128,10 @@ profileUTxO = do
 -- ==========================================
 -- Registering Stake Keys
 
-touchDPState :: DPState era -> Int
+touchDPState :: DPState crypto -> Int
 touchDPState (DPState _x _y) = 1
 
-touchUTxOState :: Shelley.Spec.Ledger.LedgerState.UTxOState cryto -> Int
+touchUTxOState :: Shelley.Spec.Ledger.LedgerState.UTxOState crypto v -> Int
 touchUTxOState (UTxOState _utxo _deposited _fees _ppups) = 2
 
 profileCreateRegKeys :: IO ()
@@ -170,37 +185,8 @@ epochAt x =
         [ bench "Using maps" (whnf action2m arg)
         ]
 
-action2m :: Era era => (DState era, PState era, UTxO era) -> SnapShot era
+action2m :: CV c v => (DState c, PState c, UTxO c v) -> SnapShot c
 action2m (dstate, pstate, utxo) = stakeDistr utxo dstate pstate
-
-dstate' :: DState C
-pstate' :: PState C
-utxo' :: UTxO C
-(dstate', pstate', utxo') = unsafePerformIO $ QC.generate (genTestCase 1000000 (5000 :: Int))
-
-profile_Maps :: Int -> IO ()
-profile_Maps _x = do
-  let snap = stakeDistr utxo' dstate' pstate'
-  putStrLn ("Size = " ++ show (Map.size (EB._delegations snap)) ++ " " ++ show (Map.size (_poolParams snap)))
-
-{- At least while running in GHCI Maps use less allocation than lists
-*Main> profile_Lists 1
-Size = 122 61
-(0.24 secs, 630,016,752 bytes)
-
-*Main> profile_Maps 1
-Size = 122 61
-(0.23 secs, 519,132,520 bytes)
-
-Compiled, Maps also seem to be a little bit faster. Maps win
-
-benchmarking aggregate stake/UTxO=1000000,  address=10000/Using lists
-time                 292.9 ms   (269.6 ms .. 316.3 ms)
-
-benchmarking aggregate stake/UTxO=1000000,  address=10000/Using maps
-time                 280.6 ms   (256.0 ms .. 297.3 ms)
-
--}
 
 -- =================================================================
 
@@ -330,11 +316,14 @@ varyDelegState tag fixed changes initstate action =
 
 -- =============================================================================
 
+
 main :: IO ()
 -- main=profileValid
-main =
+main = do
+  (genenv,chainstate,genTxfun) <- genTriple (Proxy::Proxy BenchCrypto) 1000
   defaultMain $
-    [ bgroup "vary input size" $
+    [
+       bgroup "vary input size" $
         [ varyInput "deregister key" (1, 5000) [(1, 50), (1, 500), (1, 5000)] ledgerStateWithNregisteredKeys ledgerDeRegisterStakeKeys,
           varyInput "register key" (20001, 25001) [(1, 50), (1, 500), (1, 5000)] ledgerStateWithNregisteredKeys ledgerRegisterStakeKeys,
           varyInput "withdrawal" (1, 5000) [(1, 50), (1, 500), (1, 5000)] ledgerStateWithNregisteredKeys ledgerRewardWithdrawals,
@@ -359,16 +348,17 @@ main =
       -- Benchmarks for the various generators
       bgroup "gen" $
         [ env
-            (genChainState 100000)
-            ( \cs ->
+            -- (genChainState 100000 ge)
+            (return chainstate)
+            ( \ cs ->
                 bgroup
                   "block"
-                  [ bench "genBlock" $ whnfIO $ genBlock cs
+                  [ bench "genBlock" $ whnfIO $ genBlock genenv cs
                   ]
             ),
           bgroup
             "genTx"
-            [ bench "1000" $ whnfIO $ genTx 1000
+            [ bench "1000" $ whnfIO $ genTxfun genenv
             ]
         ]
     ]

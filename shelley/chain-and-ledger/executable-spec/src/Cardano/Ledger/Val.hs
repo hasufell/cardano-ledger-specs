@@ -19,6 +19,7 @@
 module Cardano.Ledger.Val
   ( Val (..),
     (~~),
+    minus,
     scaledMinDeposit,
 
     -- * Re-exports
@@ -59,7 +60,7 @@ class
   Val t
   where
   -- | Multiply the value by a scalar
-  scale :: Integral i => i -> t -> t
+  scale :: Integer -> t -> t
 
   -- | Is the argument zero?
   isZero :: t -> Bool
@@ -74,16 +75,25 @@ class
   size :: t -> Integer -- compute size of Val instance
   -- TODO add PACK/UNPACK stuff to this class
 
+  vsplit :: t -> Integer -> ([t], Coin)
+
 -- | Group subtraction. When we move to groups-0.5 we can export this from
 -- there.
 (~~) :: Group g => g -> g -> g
 a ~~ b = a <> invert b
+
+minus :: Val t => t -> t -> t
+minus x y = x <> (scale (-1) y)
 
 instance Val Coin where
   scale n (Coin x) = Coin $ (fromIntegral n) * x
   coin = id
   inject = id
   size _ = 1
+  vsplit (Coin n) 0 = ([], Coin n)
+  vsplit (Coin n) m -- TODO fix this?
+    | m Prelude.<= 0 = error "must split coins into positive parts"
+    | otherwise = (take (fromIntegral m) (repeat (Coin (n `div` m))), Coin (n `rem` m))
 
 {- The scaledMinDeposit calculation uses the minUTxOValue protocol parameter
 (passed to it as Coin mv) as a specification of "the cost of

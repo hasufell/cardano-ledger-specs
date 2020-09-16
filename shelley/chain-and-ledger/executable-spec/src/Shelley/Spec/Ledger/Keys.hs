@@ -14,6 +14,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
 
@@ -136,7 +137,7 @@ class HasKeyRole (a :: KeyRole -> Type -> Type) where
 --   This is the most common coercion between key roles, because most keys can
 --   be used as witnesses to some types of transaction. As such, we provide an
 --   explicit coercion for it.
-asWitness ::
+asWitness :: forall era a r.
   (HasKeyRole a) =>
   a r era ->
   a 'Witness era
